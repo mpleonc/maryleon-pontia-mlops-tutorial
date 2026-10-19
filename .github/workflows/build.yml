@@ -51,7 +51,7 @@ jobs:
           AZURE_CLIENT_ID: ${{secrets.AZURE_CLIENT_ID}}
           AZURE_TENANT_ID: ${{secrets.AZURE_TENANT_ID}}
           AZURE_CLIENT_SECRET: ${{secrets.AZURE_CLIENT_SECRET}}
-          MLFLOW_URL: ${{vars.MLFLOW_URL}}
+          MLFLOW_URI: ${{vars.MLFLOW_URL}}
           EXPERIMENT_NAME: ${{vars.EXPERIMENT_NAME}}
       - name: Publicar artefactos
         uses: actions/upload-artifact@v4
