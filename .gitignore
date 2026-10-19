@@ -8,6 +8,8 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+data/
+models/
 
 # --- Virtual environments ---
 .env
