@@ -1,0 +1,114 @@
+name: Build and Deploy Azure Container Apps
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: Staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./deployment
+          file: ./deployment/Dockerfile
+          push: true
+          tags: |
+            ${{ vars.DOCKERHUB_REPO }}/${{ vars.IMAGE_NAME }}:latest
+
+      - name: Login to Azure
+        uses: azure/login@v3
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      - name: Verify Container App
+        env:
+          RESOURCE_GROUP: rg-alberto-pontia
+          CONTAINER_APP: container-app
+        run: |
+          az containerapp show \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+            --query "{name:name, resourceGroup:resourceGroup, id:id}" \
+            --output json
+
+      - name: Configure application secrets
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          MLFLOW_TRACKING_URI: ${{ vars.MLFLOW_URI }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          CONTAINER_APP: ${{ vars.CONTAINER_APP }}
+          MODEL_URI: ${{ vars.MODEL_URI }}
+        run: |
+          set -euo pipefail
+
+          az containerapp secret set \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --secrets \
+              "azure-tenant-id=$AZURE_TENANT_ID" \
+              "azure-client-id=$AZURE_CLIENT_ID" \
+              "azure-client-secret=$AZURE_CLIENT_SECRET"
+
+          az containerapp update \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --set-env-vars \
+              "AZURE_TENANT_ID=secretref:azure-tenant-id" \
+              "AZURE_CLIENT_ID=secretref:azure-client-id" \
+              "AZURE_CLIENT_SECRET=secretref:azure-client-secret" \
+              "MLFLOW_TRACKING_URI=$MLFLOW_TRACKING_URI" \
+              "MODEL_URI=$MODEL_URI"
+
+      - name: Configure private Docker Hub registry
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          CONTAINER_APP: ${{ vars.CONTAINER_APP }}
+          DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKER_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          az containerapp registry set \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --server index.docker.io \
+            --username "$DOCKER_USER" \
+            --password "$DOCKER_TOKEN"
+
+      - name: Deploy to Azure Container Apps
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          CONTAINER_APP: ${{ vars.CONTAINER_APP }}
+          DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+        run: |
+          IMAGE="docker.io/${DOCKER_USER}/${IMAGE_NAME}:latest"
+
+          az containerapp update \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$IMAGE"
