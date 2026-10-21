@@ -61,7 +61,7 @@ jobs:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           MLFLOW_TRACKING_URI: ${{ vars.MLFLOW_URI }}
-          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
           CONTAINER_APP: ${{ vars.CONTAINER_APP }}
           MODEL_URI: ${{ vars.MODEL_URI }}
         run: |
@@ -87,7 +87,7 @@ jobs:
 
       - name: Configure private Docker Hub registry
         env:
-          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
           CONTAINER_APP: ${{ vars.CONTAINER_APP }}
           DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKER_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -101,7 +101,7 @@ jobs:
 
       - name: Deploy to Azure Container Apps
         env:
-          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
           CONTAINER_APP: ${{ vars.CONTAINER_APP }}
           DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
           IMAGE_NAME: ${{ vars.IMAGE_NAME }}
