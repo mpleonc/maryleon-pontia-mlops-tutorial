@@ -44,7 +44,7 @@ jobs:
           echo "Dataset extracted to ./data/raw"
           find ./data -maxdepth 2 -type f      
 
-     - name: Download Model
+      - name: Download Model
         run: |
           python scripts/download_model.py
         env:
