@@ -45,8 +45,8 @@ jobs:
 
       - name: Verify Container App
         env:
-          RESOURCE_GROUP: rg-alberto-pontia
-          CONTAINER_APP: container-app
+          RESOURCE_GROUP: ${{RESOURCE_GROUP}}
+          CONTAINER_APP: ${{CONTAINER_APP}}
         run: |
           az containerapp show \
             --name "$CONTAINER_APP" \
